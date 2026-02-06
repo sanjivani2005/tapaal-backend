@@ -1,0 +1,125 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String      @id @default(uuid())
+  name                String
+  email               String      @unique
+  role                String      @default("USER") // ADMIN, MANAGER, CLERK, OFFICER, HOD
+  deptId              String?
+  department          Department? @relation(fields: [deptId], references: [id])
+  status              String      @default("Active") // Active, Inactive
+  inwardMailsReceived String? // For tracking received mails
+  outwardMailsSent    String? // For tracking sent mails
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+}
+
+model Department {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  code         String        @unique // e.g., REV, EDU
+  head         String? // Department head
+  status       String        @default("Active") // Active, Inactive
+  users        User[]
+  mails        InwardMail[]
+  outwardMails OutwardMail[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model OutwardMail {
+  id           String          @id @default(uuid())
+  mailId       String?         @unique // OUT-2024-001 format
+  trackingId   String? // TRK-1245 format
+  subject      String
+  description  String?
+  receiver     String
+  priority     String          @default("MEDIUM") // IMPORTANT, HIGH, MEDIUM, LOW, NORMAL
+  status       String          @default("PENDING") // PENDING, IN_TRANSIT, DELIVERED, DISPATCHED
+  deliveryMode String? // Courier, Hand, Post, Email, Internal
+  dueDate      DateTime?
+  attachments  Int             @default(0)
+  sentBy       String?
+  type         String          @default("Outward")
+  date         DateTime        @default(now())
+  deptId       String
+  department   Department      @relation(fields: [deptId], references: [id])
+  tracking     TrackingEvent[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model InwardMail {
+  id               String          @id @default(uuid())
+  mailId           String?         @unique // INW-2024-001 format
+  trackingId       String? // TRK-1234 format
+  subject          String
+  description      String?
+  details          String? // Additional details
+  sender           String
+  senderName       String
+  priority         String          @default("MEDIUM") // IMPORTANT, HIGH, MEDIUM, LOW, NORMAL
+  status           String          @default("PENDING") // PENDING, ASSIGNED, COMPLETED, IN_PROGRESS
+  isAnomaly        Boolean         @default(false)
+  receivedBy       String? // Who received the mail
+  handoverTo       String? // Who it was handed over to
+  deliveryMode     String? // Courier, Hand, Post, Email, Internal
+  referenceDetails String? // Reference number/details
+  type             String          @default("Inward")
+  date             DateTime        @default(now())
+  deptId           String
+  department       Department      @relation(fields: [deptId], references: [id])
+  tracking         TrackingEvent[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model TrackingEvent {
+  id            String          @id @default(uuid())
+  eventId       String?         @unique // TRK-2401 format
+  inwardMailId  String?
+  outwardMailId String?
+  mailType      String          @default("Inward") // Inward, Outward
+  inwardMail    InwardMail?     @relation(fields: [inwardMailId], references: [id])
+  outwardMail   OutwardMail?    @relation(fields: [outwardMailId], references: [id])
+  status        String
+  remarks       String?
+  updatedBy     String
+  assignedTo    String?
+  currentStatus String? // For tracking current status
+  subject       String? // Mail subject for easy reference
+  sender        String? // For inward mails
+  receiver      String? // For outward mails
+  priority      String?
+  department    String?
+  createdAt     DateTime        @default(now())
+  lastUpdated   DateTime        @updatedAt
+  timeline      TimelineEvent[]
+}
+
+model TimelineEvent {
+  id         String        @id @default(uuid())
+  trackingId String
+  tracking   TrackingEvent @relation(fields: [trackingId], references: [id])
+  event      String
+  remarks    String?
+  timestamp  DateTime      @default(now())
+}
+
+model ChatHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  sender    String // 'user' or 'bot'
+  timestamp DateTime @default(now())
+  sessionId String
+
+  @@map("chat_history")
+}
