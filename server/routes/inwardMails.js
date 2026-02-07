@@ -222,14 +222,30 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST create new inward mail
-router.post('/', upload.array('attachments', 5), async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    // Handle multipart form data
+    // Handle form data in serverless environment
     let mailData;
-    if (req.body && typeof req.body === 'object') {
+    let attachments = [];
+
+    console.log('📥 Received request body:', req.body);
+    console.log('📁 Request headers:', req.headers);
+
+    // For serverless environment, handle form data differently
+    if (req.body) {
       mailData = req.body;
+
+      // Handle attachments if they exist (base64 or file references)
+      if (req.files && req.files.length > 0) {
+        attachments = req.files.map(file => ({
+          filename: file.filename || file.originalname,
+          originalName: file.originalname,
+          size: file.size || 0,
+          mimetype: file.mimetype || 'application/octet-stream'
+        }));
+      }
     } else {
-      return res.status(400).json({ success: false, message: 'Invalid form data' });
+      return res.status(400).json({ success: false, message: 'No form data received' });
     }
 
     const {
@@ -244,20 +260,9 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
       date
     } = mailData;
 
-    console.log('📥 Received request body:', mailData);
-    console.log('📁 Files:', req.files);
-
     // Generate unique IDs
     const id = `INW-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
     const trackingId = `TRK-${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
-
-    // Process attachments
-    const attachments = req.files ? req.files.map(file => ({
-      filename: file.filename,
-      originalName: file.originalname,
-      path: file.path,
-      size: file.size
-    })) : [];
 
     const newInwardMail = new InwardMail({
       id,
@@ -271,7 +276,9 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
       priority: priority || 'Normal',
       department: department || 'Administration',
       date: date || new Date().toISOString().slice(0, 19).replace('T', ' '),
-      attachments
+      attachments,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
 
     const savedMail = await newInwardMail.save();
