@@ -65,6 +65,7 @@ app.use('/api/outward-mails', outwardMailsRoutes);
 app.use('/api/departments', departmentsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // Health route
 app.get('/api/health', (req, res) => {
