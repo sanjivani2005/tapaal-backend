@@ -222,8 +222,16 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST create new outward mail
-router.post('/', upload.array('attachments', 5), async (req, res) => {
+router.post('/', async (req, res) => {
   try {
+    console.log('📥 Received outward mail request body:', req.body);
+    console.log('📁 Request headers:', req.headers);
+
+    // Handle form data in serverless environment
+    if (!req.body) {
+      return res.status(400).json({ success: false, message: 'No form data received' });
+    }
+
     const {
       sentBy,
       receiver,
@@ -236,42 +244,47 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
       department,
       date,
       dueDate,
-      cost
+      cost,
+      attachments
     } = req.body;
 
     // Generate unique IDs
     const id = `OUT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
     const trackingId = `TRK-${new Date().getFullYear()}${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
 
-    // Process attachments
-    const attachments = req.files ? req.files.map(file => ({
-      filename: file.filename,
-      originalName: file.originalname,
-      path: file.path,
-      size: file.size
+    // Process attachments (if any)
+    const processedAttachments = attachments && Array.isArray(attachments) ? attachments.map(attachment => ({
+      filename: attachment.filename || attachment.originalName,
+      originalName: attachment.originalName || attachment.filename,
+      size: attachment.size || 0,
+      mimetype: attachment.mimetype || 'application/octet-stream'
     })) : [];
 
     const newOutwardMail = new OutwardMail({
       id,
       trackingId,
-      sentBy,
-      receiver,
-      receiverAddress,
+      sentBy: sentBy || 'System Admin',
+      receiver: receiver || 'Unknown',
+      receiverAddress: receiverAddress || '',
       date: date || new Date().toISOString().slice(0, 10),
-      deliveryMode,
-      subject,
-      details,
-      referenceDetails,
-      priority,
-      department,
+      deliveryMode: deliveryMode || 'Courier',
+      subject: subject || '',
+      details: details || '',
+      referenceDetails: referenceDetails || '',
+      priority: priority || 'Normal',
+      department: department || 'Administration',
       dueDate: dueDate ? new Date(dueDate) : undefined,
       cost: cost ? parseFloat(cost) : undefined,
-      attachments
+      attachments: processedAttachments,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
 
     const savedMail = await newOutwardMail.save();
+    console.log('✅ Outward mail saved successfully:', savedMail);
     res.status(201).json({ success: true, data: savedMail });
   } catch (error) {
+    console.error('💥 Error creating outward mail:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
