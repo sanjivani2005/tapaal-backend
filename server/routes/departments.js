@@ -108,15 +108,55 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     console.log('🔍 POST /api/departments - Creating department:', req.body);
-    const department = new Department(req.body);
+
+    // Validate required fields
+    const { name, code, description, headOfDepartment, email, phone, location } = req.body;
+
+    if (!name || !code || !description || !headOfDepartment || !email || !phone || !location) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: name, code, description, headOfDepartment, email, phone, location'
+      });
+    }
+
+    const department = new Department({
+      name,
+      code,
+      description,
+      headOfDepartment,
+      email,
+      phone,
+      location,
+      status: req.body.status || 'active'
+    });
+
     await department.save();
     console.log('✅ Department created successfully:', department.name);
-    res.json({
+    res.status(201).json({
       success: true,
       data: department
     });
   } catch (error) {
     console.error('❌ Error creating department:', error);
+
+    // Handle specific errors
+    if (error.code === 11000) {
+      // Duplicate key error
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `Department ${field} already exists`
+      });
+    }
+
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: ' + errors.join(', ')
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message
