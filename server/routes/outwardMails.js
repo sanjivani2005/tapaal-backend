@@ -5,6 +5,132 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const OutwardMail = require('../models/OutwardMail');
 
+// SEED DATA: Add sample outward mails if database is empty
+router.post('/seed', async (req, res) => {
+  try {
+    const existingCount = await OutwardMail.countDocuments();
+    if (existingCount > 0) {
+      return res.json({
+        success: true,
+        message: `Database already has ${existingCount} outward mails`,
+        count: existingCount
+      });
+    }
+
+    const sampleMails = [
+      {
+        id: 'OUT-2026-001',
+        trackingId: 'TRK-2026001',
+        sentBy: 'Admin Office',
+        receiver: 'External Partner Ltd',
+        receiverAddress: '123 Business Ave, Suite 100, City, State 12345',
+        subject: 'Partnership Agreement 2026',
+        details: 'Official partnership agreement for collaboration on upcoming projects',
+        department: 'Administration',
+        priority: 'High',
+        status: 'Sent',
+        date: '2026-02-07',
+        createdAt: new Date('2026-02-07T09:00:00Z'),
+        deliveryMode: 'Courier',
+        attachments: [],
+        cost: 25.50
+      },
+      {
+        id: 'OUT-2026-002',
+        trackingId: 'TRK-2026002',
+        sentBy: 'Finance Department',
+        receiver: 'Tax Consultant',
+        receiverAddress: '456 Financial St, Floor 5, City, State 67890',
+        subject: 'Annual Tax Documents',
+        details: 'Complete tax documentation for fiscal year 2025-2026',
+        department: 'Finance',
+        priority: 'Normal',
+        status: 'Delivered',
+        date: '2026-02-06',
+        createdAt: new Date('2026-02-06T14:30:00Z'),
+        deliveryMode: 'Registered Post',
+        attachments: [
+          { filename: 'tax_docs.pdf', originalName: 'Tax_Documents_2026.pdf', size: 1536000 }
+        ],
+        cost: 15.75
+      },
+      {
+        id: 'OUT-2026-003',
+        trackingId: 'TRK-2026003',
+        sentBy: 'Legal Department',
+        receiver: 'Court House',
+        receiverAddress: '789 Legal Blvd, Downtown, City, State 11111',
+        subject: 'Legal Notice Response',
+        details: 'Official response to legal notice regarding contract dispute',
+        department: 'Legal',
+        priority: 'Critical',
+        status: 'In Transit',
+        date: '2026-02-05',
+        createdAt: new Date('2026-02-05T11:15:00Z'),
+        deliveryMode: 'Express Courier',
+        attachments: [
+          { filename: 'legal_response.pdf', originalName: 'Legal_Notice_Response_2026.pdf', size: 2048000 }
+        ],
+        cost: 45.00
+      },
+      {
+        id: 'OUT-2026-004',
+        trackingId: 'TRK-2026004',
+        sentBy: 'HR Department',
+        receiver: 'Insurance Company',
+        receiverAddress: '321 Insurance Plaza, Suite 200, City, State 33333',
+        subject: 'Employee Insurance Claims',
+        details: 'Monthly employee insurance claim submissions and documentation',
+        department: 'Human Resources',
+        priority: 'Medium',
+        status: 'Processing',
+        date: '2026-02-04',
+        createdAt: new Date('2026-02-04T16:45:00Z'),
+        deliveryMode: 'Standard Mail',
+        attachments: [
+          { filename: 'claims.xlsx', originalName: 'Employee_Claims_Feb_2026.xlsx', size: 512000 }
+        ],
+        cost: 8.50
+      },
+      {
+        id: 'OUT-2026-005',
+        trackingId: 'TRK-2026005',
+        sentBy: 'IT Department',
+        receiver: 'Software Vendor',
+        receiverAddress: '555 Tech Park Drive, Building A, City, State 55555',
+        subject: 'Software License Renewal',
+        details: 'Annual software license renewal agreement and payment confirmation',
+        department: 'Information Technology',
+        priority: 'High',
+        status: 'Pending',
+        date: '2026-02-03',
+        createdAt: new Date('2026-02-03T10:30:00Z'),
+        deliveryMode: 'Email with Digital Signature',
+        attachments: [
+          { filename: 'license_agreement.pdf', originalName: 'Software_License_2026.pdf', size: 1024000 }
+        ],
+        cost: 0.00
+      }
+    ];
+
+    const insertedMails = await OutwardMail.insertMany(sampleMails);
+
+    res.json({
+      success: true,
+      message: `Successfully seeded ${insertedMails.length} outward mails`,
+      count: insertedMails.length,
+      data: insertedMails
+    });
+  } catch (error) {
+    console.error('Error seeding outward mails:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to seed outward mails',
+      error: error.message
+    });
+  }
+});
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
