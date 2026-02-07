@@ -2,6 +2,89 @@ const express = require('express');
 const router = express.Router();
 const Department = require('../models/Department');
 
+// SEED DATA: Add sample departments if database is empty
+router.post('/seed', async (req, res) => {
+  try {
+    const existingCount = await Department.countDocuments();
+    if (existingCount > 0) {
+      return res.json({
+        success: true,
+        message: `Database already has ${existingCount} departments`,
+        count: existingCount
+      });
+    }
+
+    const sampleDepartments = [
+      {
+        name: 'Human Resources',
+        code: 'HR',
+        description: 'Manages employee relations, recruitment, and HR policies',
+        headOfDepartment: 'Sarah Johnson',
+        email: 'hr@tapaal.com',
+        phone: '+1-555-0101',
+        location: 'Building A, Floor 2',
+        status: 'active'
+      },
+      {
+        name: 'Finance',
+        code: 'FIN',
+        description: 'Handles financial planning, accounting, and budget management',
+        headOfDepartment: 'Michael Chen',
+        email: 'finance@tapaal.com',
+        phone: '+1-555-0102',
+        location: 'Building A, Floor 3',
+        status: 'active'
+      },
+      {
+        name: 'Information Technology',
+        code: 'IT',
+        description: 'Manages IT infrastructure, software development, and technical support',
+        headOfDepartment: 'David Kumar',
+        email: 'it@tapaal.com',
+        phone: '+1-555-0103',
+        location: 'Building B, Floor 1',
+        status: 'active'
+      },
+      {
+        name: 'Operations',
+        code: 'OPS',
+        description: 'Oversees daily operations, logistics, and process optimization',
+        headOfDepartment: 'Lisa Williams',
+        email: 'operations@tapaal.com',
+        phone: '+1-555-0104',
+        location: 'Building B, Floor 2',
+        status: 'active'
+      },
+      {
+        name: 'Legal',
+        code: 'LEG',
+        description: 'Provides legal counsel, contract management, and compliance',
+        headOfDepartment: 'Robert Martinez',
+        email: 'legal@tapaal.com',
+        phone: '+1-555-0105',
+        location: 'Building A, Floor 4',
+        status: 'active'
+      }
+    ];
+
+    const insertedDepartments = await Department.insertMany(sampleDepartments);
+
+    res.json({
+      success: true,
+      message: `Successfully seeded ${insertedDepartments.length} departments`,
+      count: insertedDepartments.length,
+      data: insertedDepartments
+    });
+  } catch (error) {
+    console.error('Error seeding departments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to seed departments',
+      error: error.message
+    });
+  }
+});
+
 // GET all departments
 router.get('/', async (req, res) => {
   try {
