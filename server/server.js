@@ -14,7 +14,6 @@ const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || 'localhost';
 
 // Debug ENV
 console.log("🔑 Gemini API Key:", process.env.GEMINI_API_KEY ? "SET" : "NOT SET");
@@ -22,24 +21,43 @@ console.log("🗄 Mongo URI:", process.env.MONGODB_URI ? "SET" : "NOT SET");
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://tapaal-frontend.vercel.app'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://tapaal-frontend.vercel.app', 'https://tapaal.vercel.app'],
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// MongoDB connection
+let isConnected = false;
 
-// Ensure upload folders exist
-const fs = require('fs');
-const uploadsDir = path.join(__dirname, '../uploads');
-const inwardDir = path.join(uploadsDir, 'inward');
-const outwardDir = path.join(uploadsDir, 'outward');
+const connectDB = async () => {
+  if (isConnected) return;
 
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-if (!fs.existsSync(inwardDir)) fs.mkdirSync(inwardDir, { recursive: true });
-if (!fs.existsSync(outwardDir)) fs.mkdirSync(outwardDir, { recursive: true });
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    isConnected = true;
+    console.log('✅ MongoDB connected');
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    throw error;
+  }
+};
+
+// Connect to DB before handling requests
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed'
+    });
+  }
+});
 
 // Routes
 app.use('/api/inward-mails', inwardMailsRoutes);
@@ -53,7 +71,8 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Tapaal Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    connected: isConnected
   });
 });
 
@@ -74,14 +93,12 @@ app.use('*', (req, res) => {
   });
 });
 
-// Start server
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 Tapaal Server is running on http://${HOST}:${PORT}`);
-  console.log(`📊 Health check: http://${HOST}:${PORT}/api/health`);
-  console.log(`📧 Inward Mails API: http://${HOST}:${PORT}/api/inward-mails`);
-  console.log(`📤 Outward Mails API: http://${HOST}:${PORT}/api/outward-mails`);
-  console.log(`🏢 Departments API: http://${HOST}:${PORT}/api/departments`);
-  console.log(`👥 Users API: http://${HOST}:${PORT}/api/users`);
-});
+// Only start server if not in serverless environment
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Tapaal Server is running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  });
+}
 
 module.exports = app;
