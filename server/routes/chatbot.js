@@ -1,8 +1,8 @@
-import express from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import Inward from "../models/InwardMail.js";
-import Outward from "../models/OutwardMail.js";
-import Department from "../models/Department.js";
+const express = require("express");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Inward = require("../models/InwardMail");
+const Outward = require("../models/OutwardMail");
+const Department = require("../models/Department");
 
 const router = express.Router();
 
@@ -10,26 +10,26 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 router.post("/", async (req, res) => {
-  try {
-    const { message } = req.body;
+    try {
+        const { message } = req.body;
 
-    // ----------------------------
-    // 1️⃣ Detect tracking ID
-    // ----------------------------
-    const trackingMatch = message.match(/TRK-\d+/i);
+        // ----------------------------
+        // 1️⃣ Detect tracking ID
+        // ----------------------------
+        const trackingMatch = message.match(/TRK-\d+/i);
 
-    let trackingInfo = "";
+        let trackingInfo = "";
 
-    if (trackingMatch) {
-      const trackingId = trackingMatch[0];
+        if (trackingMatch) {
+            const trackingId = trackingMatch[0];
 
-      // search inward
-      let mail =
-        await Inward.findOne({ trackingId }) ||
-        await Outward.findOne({ trackingId });
+            // search inward
+            let mail =
+                await Inward.findOne({ trackingId }) ||
+                await Outward.findOne({ trackingId });
 
-      if (mail) {
-        trackingInfo = `
+            if (mail) {
+                trackingInfo = `
 Tracking Record Found:
 
 Tracking ID: ${mail.trackingId}
@@ -41,21 +41,21 @@ Receiver: ${mail.receiver || mail.handoverTo}
 Date: ${mail.date}
 Priority: ${mail.priority}
 `;
-      } else {
-        trackingInfo = `No record found for tracking ID ${trackingId}`;
-      }
-    }
+            } else {
+                trackingInfo = `No record found for tracking ID ${trackingId}`;
+            }
+        }
 
-    // ----------------------------
-    // 2️⃣ Fetch general database stats
-    // ----------------------------
-    const pendingInward = await Inward.countDocuments({ status: "pending" });
-    const totalOutward = await Outward.countDocuments();
+        // ----------------------------
+        // 2️⃣ Fetch general database stats
+        // ----------------------------
+        const pendingInward = await Inward.countDocuments({ status: "pending" });
+        const totalOutward = await Outward.countDocuments();
 
-    // ----------------------------
-    // 3️⃣ Create Gemini prompt
-    // ----------------------------
-    const prompt = `
+        // ----------------------------
+        // 3️⃣ Create Gemini prompt
+        // ----------------------------
+        const prompt = `
 You are an AI assistant for Tapaal Office Management System.
 
 Real office statistics:
@@ -74,16 +74,16 @@ User Question:
 ${message}
 `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
 
-    res.json({ reply: text });
+        res.json({ reply: text });
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "AI tracking failed" });
-  }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "AI tracking failed" });
+    }
 });
 
-export default router;
+module.exports = router;
