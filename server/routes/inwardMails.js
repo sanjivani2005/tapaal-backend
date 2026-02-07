@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 const InwardMail = require('../models/InwardMail');
 
 // SEED DATA: Add sample inward mails if database is empty
@@ -348,4 +348,4 @@ router.get('/stats/summary', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
