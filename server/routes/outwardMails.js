@@ -151,11 +151,52 @@ router.post('/', upload.array('attachments', 5), async (req, res) => {
 });
 
 // PUT update outward mail
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.array('attachments', 5), async (req, res) => {
   try {
+    const {
+      sentBy,
+      receiver,
+      receiverAddress,
+      deliveryMode,
+      subject,
+      details,
+      referenceDetails,
+      priority,
+      department,
+      date,
+      dueDate,
+      cost,
+      status
+    } = req.body;
+
+    // Process attachments
+    const attachments = req.files ? req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      path: file.path,
+      size: file.size
+    })) : [];
+
+    const updateData = {
+      sentBy,
+      receiver,
+      receiverAddress,
+      deliveryMode,
+      subject,
+      details,
+      referenceDetails,
+      priority,
+      department,
+      date: date || new Date().toISOString().slice(0, 10),
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+      cost: cost ? parseFloat(cost) : undefined,
+      status,
+      attachments
+    };
+
     const updatedMail = await OutwardMail.findOneAndUpdate(
       { id: req.params.id },
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
 

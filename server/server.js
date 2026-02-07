@@ -20,31 +20,20 @@ const HOST = process.env.HOST || 'localhost';
 console.log("🔑 Gemini API Key:", process.env.GEMINI_API_KEY ? "SET" : "NOT SET");
 console.log("🗄 Mongo URI:", process.env.MONGODB_URI ? "SET" : "NOT SET");
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('✅ Connected to MongoDB successfully');
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
-
 // Middleware
 app.use(cors({
-  origin: ['https://tapaal-frontend.vercel.app', 'http://localhost:3000', 'http://localhost:5173'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://tapaal-frontend.vercel.app'],
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/api/chatbot', chatbotRoutes);
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Ensure upload folders exist
 const fs = require('fs');
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = path.join(__dirname, '../uploads');
 const inwardDir = path.join(uploadsDir, 'inward');
 const outwardDir = path.join(uploadsDir, 'outward');
 
