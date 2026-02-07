@@ -28,6 +28,70 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/chatbot', chatbotRoutes);
 
+// Mock data endpoints for frontend compatibility
+app.get('/api/dashboard/stats', (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            stats: {
+                totalUsers: 0,
+                totalDepartments: 0,
+                totalMails: 0,
+                totalTrackingEvents: 0,
+                totalInwardMails: 0,
+                totalOutwardMails: 0,
+                pendingMails: 0,
+                assignedMails: 0,
+                registeredMails: 0,
+            },
+            realData: {
+                stats: {
+                    totalUsers: 0,
+                    totalDepartments: 0,
+                    totalMails: 0,
+                    totalTrackingEvents: 0,
+                    totalInwardMails: 0,
+                    totalOutwardMails: 0,
+                    pendingMails: 0,
+                    assignedMails: 0,
+                    registeredMails: 0,
+                },
+                statusData: [],
+                monthlyData: [],
+                recentMails: []
+            }
+        }
+    });
+});
+
+app.get('/api/departments', (req, res) => {
+    res.json({
+        success: true,
+        data: []
+    });
+});
+
+app.get('/api/inward-mails', (req, res) => {
+    res.json({
+        success: true,
+        data: []
+    });
+});
+
+app.get('/api/outward-mails', (req, res) => {
+    res.json({
+        success: true,
+        data: []
+    });
+});
+
+app.get('/api/users', (req, res) => {
+    res.json({
+        success: true,
+        data: []
+    });
+});
+
 // Health check
 app.get('/', (req, res) => {
     res.send("Tapaal API running");
