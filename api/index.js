@@ -18,7 +18,9 @@ app.use(cors({
     credentials: true
 }));
 
+// Parse JSON and form data
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -75,6 +77,17 @@ app.get('/api/inward-mails', (req, res) => {
     res.json({
         success: true,
         data: []
+    });
+});
+
+app.post('/api/inward-mails', (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            id: 'TEMP_' + Date.now(),
+            message: 'Inward mail created successfully (mock response)',
+            receivedData: req.body
+        }
     });
 });
 
