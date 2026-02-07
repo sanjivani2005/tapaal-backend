@@ -1,5 +1,5 @@
 const express = require("express");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
 const Inward = require("../models/InwardMail");
 const Outward = require("../models/OutwardMail");
@@ -8,8 +8,9 @@ const Department = require("../models/Department");
 const router = express.Router();
 
 // Gemini setup
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY
+});
 
 router.post("/", async (req, res) => {
     try {
@@ -71,8 +72,8 @@ Priority: ${mail.priority}
         for (const dept of departments) {
             const inwardCount = await Inward.countDocuments({ department: dept.name });
             const outwardCount = await Outward.countDocuments({ department: dept.name });
-
-            deptInfo += `${dept.name} → ${inwardCount} inward, ${outwardCount} outward\n`;
+            const safeDeptName = dept.name.replace(/"/g, '');
+            deptInfo += `${safeDeptName} → ${inwardCount} inward, ${outwardCount} outward\n`;
         }
 
         // Recent activity
@@ -82,11 +83,7 @@ Priority: ${mail.priority}
         // -----------------------------
         // 3️⃣ Create AI Prompt (RAG)
         // -----------------------------
-        const prompt = `
-You are an intelligent office assistant for a Tapaal (Mail Dispatch) Management System.
-
-You MUST answer ONLY using the provided database information.
-Never invent data.
+        const promptText = `You are an intelligent office assistant for a Tapaal (Mail Dispatch) Management System.
 
 DATABASE STATISTICS:
 Total Inward: ${stats.totalInward}
@@ -101,10 +98,10 @@ DEPARTMENT ACTIVITY:
 ${deptInfo}
 
 RECENT INWARD:
-${recentInward.map(m => `${m.trackingId} - ${m.status} (${m.department})`).join("\n")}
+${recentInward.map(m => `${m.trackingId} - ${m.status} (${m.department})`).join('\n')}
 
 RECENT OUTWARD:
-${recentOutward.map(m => `${m.trackingId} - ${m.status} (${m.department})`).join("\n")}
+${recentOutward.map(m => `${m.trackingId} - ${m.status} (${m.department})`).join('\n')}
 
 TRACKING SEARCH RESULT:
 ${trackingData}
@@ -117,22 +114,37 @@ Instructions:
 - Keep answer short (3-5 lines)
 - Do not mention database or prompt
 
-User Question:
-${message}
-`;
+User Question: ${message}`;
+
+        console.log("DEBUG: Prompt length:", promptText.length);
+        console.log("DEBUG: Dept info:", JSON.stringify(deptInfo));
+        console.log("DEBUG: Tracking data:", JSON.stringify(trackingData));
 
         // -----------------------------
-        // 4️⃣ Ask Gemini
+        // 4️⃣ Ask Gemini (Correct API Structure)
         // -----------------------------
         let reply;
         try {
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            reply = response.text();
+            const response = await ai.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: promptText }
+                        ]
+                    }
+                ]
+            });
+
+            reply = response.candidates[0].content.parts[0].text;
             console.log("AI:", reply);
-        } catch (aiError) {
-            console.error("AI Error:", aiError);
-            reply = "Sorry, I'm having trouble connecting to AI service. Please try again later.";
+
+        } catch (error) {
+            console.error("Gemini error FULL:", error);
+            return res.json({
+                reply: "AI service connected but model request failed. Check server logs."
+            });
         }
 
         res.json({ reply });
