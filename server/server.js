@@ -1,16 +1,19 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import path from 'path';
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
 
 // Import routes
-const inwardMailsRoutes = require('./routes/inwardMails');
-const outwardMailsRoutes = require('./routes/outwardMails');
-const departmentsRoutes = require('./routes/departments');
-const usersRoutes = require('./routes/users');
-const dashboardRoutes = require('./routes/dashboard');
-const chatbotRoutes = require('./routes/chatbot');
+import inwardMailsRoutes from './routes/inwardMails.js';
+import outwardMailsRoutes from './routes/outwardMails.js';
+import departmentsRoutes from './routes/departments.js';
+import usersRoutes from './routes/users.js';
+import dashboardRoutes from './routes/dashboard.js';
+import chatbotRoutes from './routes/chatbot.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -34,15 +37,12 @@ const connectDB = async () => {
   if (isConnected) return;
 
   try {
-    // Optimized for serverless environments
+    // Updated MongoDB connection options for newer versions
     const options = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 10, // Connection pooling for serverless
       serverSelectionTimeoutMS: 5000, // Faster timeout
       socketTimeoutMS: 45000, // Socket timeout
-      bufferMaxEntries: 0, // Disable buffering for serverless
-      bufferCommands: false, // Disable command buffering
+      bufferCommands: true, // Enable buffering for serverless functions
     };
 
     await mongoose.connect(process.env.MONGODB_URI, options);
@@ -52,18 +52,34 @@ const connectDB = async () => {
     console.error('❌ MongoDB connection error:', error);
     // Don't throw error in serverless, just log it
     isConnected = false;
+    throw error; // Re-throw to let middleware handle it
   }
 };
 
 // Connect to DB before handling requests
 app.use(async (req, res, next) => {
   try {
-    await connectDB();
+    // For serverless, always ensure connection is ready
+    if (process.env.VERCEL) {
+      if (mongoose.connection.readyState !== 1) {
+        await connectDB();
+      }
+    } else if (!isConnected) {
+      await connectDB();
+    }
+
+    // Final connection check
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error(`Database not connected. State: ${mongoose.connection.readyState}`);
+    }
+
     next();
   } catch (error) {
+    console.error('❌ Database middleware error:', error);
     res.status(500).json({
       success: false,
-      message: 'Database connection failed'
+      message: 'Database connection failed',
+      error: error.message
     });
   }
 });
@@ -111,4 +127,4 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   });
 }
 
-module.exports = app;
+export default app;
