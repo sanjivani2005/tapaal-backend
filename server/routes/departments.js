@@ -164,6 +164,34 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET single department by ID
+router.get('/:id', async (req, res) => {
+  try {
+    console.log('🔍 GET /api/departments/:id - Fetching department:', req.params.id);
+    const department = await Department.findById(req.params.id);
+
+    if (!department) {
+      console.log('❌ Department not found:', req.params.id);
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found'
+      });
+    }
+
+    console.log('📥 Department found successfully:', department.name);
+    res.json({
+      success: true,
+      data: department
+    });
+  } catch (error) {
+    console.error('❌ Error fetching department:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // PUT update department
 router.put('/:id', async (req, res) => {
   try {
