@@ -1,4 +1,4 @@
-import express from 'express';
+const express = require('express');
 const router = express.Router();
 const InwardMail = require('../models/InwardMail');
 const OutwardMail = require('../models/OutwardMail');
@@ -167,4 +167,4 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

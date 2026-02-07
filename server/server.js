@@ -1,19 +1,16 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import path from 'path';
-import { config } from 'dotenv';
-
-// Load environment variables
-config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
 
 // Import routes
-import inwardMailsRoutes from './routes/inwardMails.js';
-import outwardMailsRoutes from './routes/outwardMails.js';
-import departmentsRoutes from './routes/departments.js';
-import usersRoutes from './routes/users.js';
-import dashboardRoutes from './routes/dashboard.js';
-import chatbotRoutes from './routes/chatbot.js';
+const inwardMailsRoutes = require('./routes/inwardMails');
+const outwardMailsRoutes = require('./routes/outwardMails');
+const departmentsRoutes = require('./routes/departments');
+const usersRoutes = require('./routes/users');
+const dashboardRoutes = require('./routes/dashboard');
+const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -144,4 +141,4 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   });
 }
 
-export default app;
+module.exports = app;
