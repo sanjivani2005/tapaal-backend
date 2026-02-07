@@ -89,18 +89,40 @@ router.post('/seed', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     console.log('🔍 GET /api/departments - Fetching all departments');
-    const departments = await Department.find().sort({ createdAt: -1 });
-    console.log('📥 Found departments:', departments.length);
+
+    // Add timeout for serverless
+    const departments = await Department.find()
+      .sort({ createdAt: -1 })
+      .maxTime(10000) // 10 second timeout
+      .lean(); // Return plain objects for better performance
+
+    console.log('� Found departments:', departments.length);
+
+    // Add cache headers for better performance
+    res.set('Cache-Control', 'public, max-age=300'); // 5 minutes cache
+
     res.json({
       success: true,
-      data: departments
+      data: departments,
+      count: departments.length
     });
   } catch (error) {
     console.error('❌ Error fetching departments:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+
+    // Better error handling for serverless
+    if (error.name === 'MongooseServerSelectionError') {
+      res.status(503).json({
+        success: false,
+        message: 'Database temporarily unavailable',
+        error: 'Database connection timeout'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch departments',
+        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message
+      });
+    }
   }
 });
 
@@ -157,9 +179,17 @@ router.post('/', async (req, res) => {
       });
     }
 
+    if (error.name === 'MongooseServerSelectionError') {
+      return res.status(503).json({
+        success: false,
+        message: 'Database temporarily unavailable',
+        error: 'Connection timeout'
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: error.message
+      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message
     });
   }
 });

@@ -34,15 +34,24 @@ const connectDB = async () => {
   if (isConnected) return;
 
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    // Optimized for serverless environments
+    const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    });
+      maxPoolSize: 10, // Connection pooling for serverless
+      serverSelectionTimeoutMS: 5000, // Faster timeout
+      socketTimeoutMS: 45000, // Socket timeout
+      bufferMaxEntries: 0, // Disable buffering for serverless
+      bufferCommands: false, // Disable command buffering
+    };
+
+    await mongoose.connect(process.env.MONGODB_URI, options);
     isConnected = true;
     console.log('✅ MongoDB connected');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
-    throw error;
+    // Don't throw error in serverless, just log it
+    isConnected = false;
   }
 };
 
