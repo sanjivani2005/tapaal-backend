@@ -47,7 +47,10 @@ const connectDB = async () => {
       bufferCommands: true, // Enable buffering for serverless functions
     };
 
-    await mongoose.connect(process.env.MONGODB_URI, options);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      ...options,
+      dbName: "tapaal"
+    });
     isConnected = true;
     console.log('✅ MongoDB connected');
   } catch (error) {
