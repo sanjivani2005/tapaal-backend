@@ -4,10 +4,10 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Import models
-const User = require('./server/models/User');
-const Inward = require('./server/models/InwardMail');
-const Outward = require('./server/models/OutwardMail');
-const Department = require('./server/models/Department');
+const User = require('../server/models/User');
+const Inward = require('../server/models/InwardMail');
+const Outward = require('../server/models/OutwardMail');
+const Department = require('../server/models/Department');
 
 // Import chatbot route
 const chatbotRoutes = require('./chatbot');
