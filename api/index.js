@@ -30,7 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // MongoDB connection with serverless optimization
 mongoose.connect(process.env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000, // 5 second timeout
+    serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
     bufferMaxEntries: 0,
     bufferCommands: false
@@ -41,16 +41,38 @@ mongoose.connect(process.env.MONGODB_URI, {
 // Routes
 app.use('/api/chatbot', chatbotRoutes);
 
-// API endpoints for frontend compatibility
+// API endpoints with fallback data
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
-        // Use timeout promises to avoid hanging
-        const [totalUsers, totalDepartments, totalInward, totalOutward] = await Promise.all([
-            User.countDocuments().catch(() => 0),
-            Department.countDocuments().catch(() => 0),
-            Inward.countDocuments().catch(() => 0),
-            Outward.countDocuments().catch(() => 0)
-        ]);
+        // Simple approach with individual try-catch for each operation
+        let totalUsers = 0;
+        let totalDepartments = 0;
+        let totalInward = 0;
+        let totalOutward = 0;
+
+        try {
+            totalUsers = await User.countDocuments();
+        } catch (e) {
+            console.log('Users count failed:', e.message);
+        }
+
+        try {
+            totalDepartments = await Department.countDocuments();
+        } catch (e) {
+            console.log('Departments count failed:', e.message);
+        }
+
+        try {
+            totalInward = await Inward.countDocuments();
+        } catch (e) {
+            console.log('Inward count failed:', e.message);
+        }
+
+        try {
+            totalOutward = await Outward.countDocuments();
+        } catch (e) {
+            console.log('Outward count failed:', e.message);
+        }
 
         res.json({
             success: true,
@@ -96,11 +118,12 @@ app.get('/api/dashboard/stats', async (req, res) => {
 
 app.get('/api/departments', async (req, res) => {
     try {
-        // Use a timeout promise to avoid hanging
-        const departments = await Promise.race([
-            Department.find(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 8000)
-        ]);
+        let departments = [];
+        try {
+            departments = await Department.find().limit(10);
+        } catch (e) {
+            console.log('Departments fetch failed:', e.message);
+        }
 
         res.json({
             success: true,
@@ -108,21 +131,21 @@ app.get('/api/departments', async (req, res) => {
         });
     } catch (error) {
         console.error('Departments API Error:', error);
-        // Return fallback data instead of error
         res.json({
             success: true,
-            data: [] // Empty array as fallback
+            data: []
         });
     }
 });
 
 app.get('/api/inward-mails', async (req, res) => {
     try {
-        // Use a timeout promise to avoid hanging
-        const inwardMails = await Promise.race([
-            Inward.find(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 8000)
-        ]);
+        let inwardMails = [];
+        try {
+            inwardMails = await Inward.find().limit(10);
+        } catch (e) {
+            console.log('Inward mails fetch failed:', e.message);
+        }
 
         res.json({
             success: true,
@@ -130,10 +153,9 @@ app.get('/api/inward-mails', async (req, res) => {
         });
     } catch (error) {
         console.error('Inward Mails API Error:', error);
-        // Return fallback data instead of error
         res.json({
             success: true,
-            data: [] // Empty array as fallback
+            data: []
         });
     }
 });
@@ -157,11 +179,12 @@ app.post('/api/inward-mails', async (req, res) => {
 
 app.get('/api/outward-mails', async (req, res) => {
     try {
-        // Use a timeout promise to avoid hanging
-        const outwardMails = await Promise.race([
-            Outward.find(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 8000)
-        ]);
+        let outwardMails = [];
+        try {
+            outwardMails = await Outward.find().limit(10);
+        } catch (e) {
+            console.log('Outward mails fetch failed:', e.message);
+        }
 
         res.json({
             success: true,
@@ -169,17 +192,22 @@ app.get('/api/outward-mails', async (req, res) => {
         });
     } catch (error) {
         console.error('Outward Mails API Error:', error);
-        // Return fallback data instead of error
         res.json({
             success: true,
-            data: [] // Empty array as fallback
+            data: []
         });
     }
 });
 
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await User.find().limit(10).lean();
+        let users = [];
+        try {
+            users = await User.find().limit(10).lean();
+        } catch (e) {
+            console.log('Users fetch failed:', e.message);
+        }
+
         res.json({
             success: true,
             data: users
@@ -188,7 +216,7 @@ app.get('/api/users', async (req, res) => {
         console.error('Users API Error:', error);
         res.json({
             success: true,
-            data: [] // Empty array as fallback
+            data: []
         });
     }
 });
