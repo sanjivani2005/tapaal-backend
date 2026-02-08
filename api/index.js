@@ -3,6 +3,12 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
+// Import models
+const User = require('./server/models/User');
+const Inward = require('./server/models/InwardMail');
+const Outward = require('./server/models/OutwardMail');
+const Department = require('./server/models/Department');
+
 // Import chatbot route
 const chatbotRoutes = require('./chatbot');
 
@@ -30,79 +36,134 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/chatbot', chatbotRoutes);
 
-// Mock data endpoints for frontend compatibility
-app.get('/api/dashboard/stats', (req, res) => {
-    res.json({
-        success: true,
-        data: {
-            stats: {
-                totalUsers: 0,
-                totalDepartments: 0,
-                totalMails: 0,
-                totalTrackingEvents: 0,
-                totalInwardMails: 0,
-                totalOutwardMails: 0,
-                pendingMails: 0,
-                assignedMails: 0,
-                registeredMails: 0,
-            },
-            realData: {
+// API endpoints for frontend compatibility
+app.get('/api/dashboard/stats', async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalDepartments = await Department.countDocuments();
+        const totalInward = await Inward.countDocuments();
+        const totalOutward = await Outward.countDocuments();
+
+        res.json({
+            success: true,
+            data: {
                 stats: {
-                    totalUsers: 0,
-                    totalDepartments: 0,
-                    totalMails: 0,
+                    totalUsers,
+                    totalDepartments,
+                    totalMails: totalInward + totalOutward,
                     totalTrackingEvents: 0,
-                    totalInwardMails: 0,
-                    totalOutwardMails: 0,
+                    totalInwardMails: totalInward,
+                    totalOutwardMails: totalOutward,
                     pendingMails: 0,
                     assignedMails: 0,
-                    registeredMails: 0,
+                    registeredMails: totalInward + totalOutward,
                 },
-                statusData: [],
-                monthlyData: [],
-                recentMails: []
+                realData: {
+                    stats: {
+                        totalUsers,
+                        totalDepartments,
+                        totalMails: totalInward + totalOutward,
+                        totalTrackingEvents: 0,
+                        totalInwardMails: totalInward,
+                        totalOutwardMails: totalOutward,
+                        pendingMails: 0,
+                        assignedMails: 0,
+                        registeredMails: totalInward + totalOutward,
+                    },
+                    statusData: [],
+                    monthlyData: [],
+                    recentMails: []
+                }
             }
-        }
-    });
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching stats',
+            error: error.message
+        });
+    }
 });
 
-app.get('/api/departments', (req, res) => {
-    res.json({
-        success: true,
-        data: []
-    });
+app.get('/api/departments', async (req, res) => {
+    try {
+        const departments = await Department.find();
+        res.json({
+            success: true,
+            data: departments
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching departments',
+            error: error.message
+        });
+    }
 });
 
-app.get('/api/inward-mails', (req, res) => {
-    res.json({
-        success: true,
-        data: []
-    });
+app.get('/api/inward-mails', async (req, res) => {
+    try {
+        const inwardMails = await Inward.find();
+        res.json({
+            success: true,
+            data: inwardMails
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching inward mails',
+            error: error.message
+        });
+    }
 });
 
-app.post('/api/inward-mails', (req, res) => {
-    res.json({
-        success: true,
-        data: {
-            id: 'TEMP_' + Date.now(),
-            message: 'Inward mail created successfully (mock response)',
-            receivedData: req.body
-        }
-    });
+app.post('/api/inward-mails', async (req, res) => {
+    try {
+        const inwardMail = new Inward(req.body);
+        await inwardMail.save();
+        res.json({
+            success: true,
+            data: inwardMail
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error creating inward mail',
+            error: error.message
+        });
+    }
 });
 
-app.get('/api/outward-mails', (req, res) => {
-    res.json({
-        success: true,
-        data: []
-    });
+app.get('/api/outward-mails', async (req, res) => {
+    try {
+        const outwardMails = await Outward.find();
+        res.json({
+            success: true,
+            data: outwardMails
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching outward mails',
+            error: error.message
+        });
+    }
 });
 
-app.get('/api/users', (req, res) => {
-    res.json({
-        success: true,
-        data: []
-    });
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await User.find();
+        res.json({
+            success: true,
+            data: users
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching users',
+            error: error.message
+        });
+    }
 });
 
 // Health check
