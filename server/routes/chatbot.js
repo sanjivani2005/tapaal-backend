@@ -14,9 +14,7 @@ const getGeminiAI = () => {
         if (!process.env.GEMINI_API_KEY) {
             throw new Error("GEMINI_API_KEY not configured");
         }
-        ai = new GoogleGenAI({
-            apiKey: process.env.GEMINI_API_KEY
-        });
+        ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
     }
     return ai;
 };
@@ -130,24 +128,14 @@ User Question: ${message}`;
         console.log("DEBUG: Tracking data:", JSON.stringify(trackingData));
 
         // -----------------------------
-        // 4️⃣ Ask Gemini (Correct API Structure)
+        // 4️⃣ Ask Gemini (Fixed API Structure)
         // -----------------------------
         let reply;
         try {
             const geminiAI = getGeminiAI();
-            const response = await geminiAI.models.generateContent({
-                model: "gemini-2.0-flash",
-                contents: [
-                    {
-                        role: "user",
-                        parts: [
-                            { text: promptText }
-                        ]
-                    }
-                ]
-            });
-
-            reply = response.candidates[0].content.parts[0].text;
+            const model = geminiAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const response = await model.generateContent(promptText);
+            reply = response.response.text();
             console.log("AI:", reply);
 
         } catch (error) {
