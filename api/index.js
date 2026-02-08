@@ -28,8 +28,13 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI)
+// MongoDB connection with serverless optimization
+mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000, // 5 second timeout
+    socketTimeoutMS: 45000,
+    bufferMaxEntries: 0,
+    bufferCommands: false
+})
     .then(() => console.log("MongoDB Connected"))
     .catch(err => console.log(err));
 
@@ -152,12 +157,13 @@ app.get('/api/outward-mails', async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await User.find();
+        const users = await User.find().limit(10).lean(); // Add limit and lean for performance
         res.json({
             success: true,
             data: users
         });
     } catch (error) {
+        console.error('Users API Error:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching users',
