@@ -7,10 +7,19 @@ const Department = require("../models/Department");
 
 const router = express.Router();
 
-// Gemini setup
-const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY
-});
+// Lazy Gemini setup - only initialize when needed
+let ai = null;
+const getGeminiAI = () => {
+    if (!ai) {
+        if (!process.env.GEMINI_API_KEY) {
+            throw new Error("GEMINI_API_KEY not configured");
+        }
+        ai = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY
+        });
+    }
+    return ai;
+};
 
 router.post("/", async (req, res) => {
     try {
@@ -125,7 +134,8 @@ User Question: ${message}`;
         // -----------------------------
         let reply;
         try {
-            const response = await ai.models.generateContent({
+            const geminiAI = getGeminiAI();
+            const response = await geminiAI.models.generateContent({
                 model: "gemini-2.0-flash",
                 contents: [
                     {
