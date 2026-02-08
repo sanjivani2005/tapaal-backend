@@ -24,7 +24,7 @@ try {
 // Debug: Check API Key
 console.log('🔑 Gemini API Key:', process.env.GEMINI_API_KEY ? 'Set' : 'NOT SET');
 
-router.post('/chat', async (req, res) => {
+router.post('/', async (req, res) => {
     try {
         console.log('🤖 Chatbot request received:', req.body);
         const { message } = req.body;
