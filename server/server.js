@@ -13,7 +13,6 @@ const dashboardRoutes = require('./routes/dashboard');
 const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Debug ENV
 console.log("🔑 Gemini API Key:", process.env.GEMINI_API_KEY ? "SET" : "NOT SET");
@@ -129,10 +128,8 @@ app.use('*', (req, res) => {
   });
 });
 
-// Only start server if not in production (Vercel serverless)
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log("Local server running on", PORT));
-}
+// Start server for all environments (Render, local, etc.)
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log("Server running on port", PORT));
 
 module.exports = app;
