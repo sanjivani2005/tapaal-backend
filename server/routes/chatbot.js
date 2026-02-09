@@ -9,14 +9,18 @@ const User = require('../models/User');
 const Department = require('../models/Department');
 const ChatbotConversation = require('../models/ChatbotConversation'); // For future conversation history
 
-// Gemini Init (STABLE MODEL)
+// Gemini Init (STABLE MODEL) - DISABLED FOR NOW
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 let model = null;
 
 // Initialize Gemini safely
 try {
-    model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    console.log('✅ Gemini AI initialized successfully');
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'YOUR_NEW_API_KEY_HERE') {
+        model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        console.log('✅ Gemini AI initialized successfully');
+    } else {
+        console.log('⚠️ Gemini AI disabled - API key not set');
+    }
 } catch (error) {
     console.error('❌ Gemini AI initialization failed:', error.message);
 }
@@ -25,12 +29,20 @@ try {
 console.log('🔑 Gemini API Key:', process.env.GEMINI_API_KEY ? 'Set' : 'NOT SET');
 
 router.post('/', async (req, res) => {
+    await handleChatbotRequest(req, res);
+});
+
+router.post('/chat', async (req, res) => {
+    await handleChatbotRequest(req, res);
+});
+
+async function handleChatbotRequest(req, res) {
     try {
         console.log('🤖 Chatbot request received:', req.body);
         const { message } = req.body;
 
         if (!message) {
-            return res.status(400).json({ response: 'Message is required' });
+            return res.status(400).json({ reply: 'Message is required' });
         }
 
         const lower = message.toLowerCase();
@@ -40,7 +52,7 @@ router.post('/', async (req, res) => {
         =============================== */
         if (['hello', 'hi', 'hey', 'namaste', 'good morning', 'good afternoon', 'good evening'].some(w => lower.includes(w))) {
             return res.json({
-                response: '👋 Hello! I am your Tapaal Mail Management Assistant. How can I help you today?\n\n💡 Try: "show users", "show statistics", "show inward mails", "help"'
+                reply: '👋 Hello! I am your Tapaal Mail Management Assistant. How can I help you today?\n\n💡 Try: "show users", "show statistics", "show inward mails", "help"'
             });
         }
 
@@ -49,7 +61,7 @@ router.post('/', async (req, res) => {
         =============================== */
         if (['help', 'what can you do', 'commands', 'features'].some(w => lower.includes(w))) {
             return res.json({
-                response: '🤖 **Tapaal Assistant Commands:**\n\n' +
+                reply: '🤖 **Tapaal Assistant Commands:**\n\n' +
                     '👥 **Users:** "show users", "user list", "how many users"\n' +
                     '📥 **Inward Mails:** "show inward mails", "inward mail list"\n' +
                     '📤 **Outward Mails:** "show outward mails", "outward mail list"\n' +
@@ -68,7 +80,7 @@ router.post('/', async (req, res) => {
             const users = await User.find().lean();
 
             if (!users.length) {
-                return res.json({ response: '👥 No users found in the system.' });
+                return res.json({ reply: '👥 No users found in the system.' });
             }
 
             const userText = users.map(u =>
@@ -76,7 +88,7 @@ router.post('/', async (req, res) => {
             ).join('\n');
 
             return res.json({
-                response: `👥 **Users List** (${new Date().toLocaleTimeString()})\n\n${userText}\n\n**Total:** ${users.length} users`
+                reply: `👥 **Users List** (${new Date().toLocaleTimeString()})\n\n${userText}\n\n**Total:** ${users.length} users`
             });
         }
 
@@ -88,7 +100,7 @@ router.post('/', async (req, res) => {
             const mails = await InwardMail.find().populate('department').lean();
 
             if (!mails.length) {
-                return res.json({ response: '📥 No inward mails found in the system.' });
+                return res.json({ reply: '📥 No inward mails found in the system.' });
             }
 
             const mailText = mails.map(m =>
@@ -96,7 +108,7 @@ router.post('/', async (req, res) => {
             ).join('\n\n');
 
             return res.json({
-                response: `📥 **Inward Mails** (${new Date().toLocaleTimeString()})\n\n${mailText}\n\n**Total:** ${mails.length} inward mails`
+                reply: `📥 **Inward Mails** (${new Date().toLocaleTimeString()})\n\n${mailText}\n\n**Total:** ${mails.length} inward mails`
             });
         }
 
@@ -108,7 +120,7 @@ router.post('/', async (req, res) => {
             const mails = await OutwardMail.find().populate('department').lean();
 
             if (!mails.length) {
-                return res.json({ response: '📤 No outward mails found in the system.' });
+                return res.json({ reply: '📤 No outward mails found in the system.' });
             }
 
             const mailText = mails.map(m =>
@@ -116,7 +128,7 @@ router.post('/', async (req, res) => {
             ).join('\n\n');
 
             return res.json({
-                response: `📤 **Outward Mails** (${new Date().toLocaleTimeString()})\n\n${mailText}\n\n**Total:** ${mails.length} outward mails`
+                reply: `📤 **Outward Mails** (${new Date().toLocaleTimeString()})\n\n${mailText}\n\n**Total:** ${mails.length} outward mails`
             });
         }
 
@@ -128,7 +140,7 @@ router.post('/', async (req, res) => {
             const departments = await Department.find().lean();
 
             if (!departments.length) {
-                return res.json({ response: '🏢 No departments found in the system.' });
+                return res.json({ reply: '🏢 No departments found in the system.' });
             }
 
             const deptText = departments.map(d =>
@@ -136,7 +148,7 @@ router.post('/', async (req, res) => {
             ).join('\n\n');
 
             return res.json({
-                response: `🏢 **Departments** (${new Date().toLocaleTimeString()})\n\n${deptText}\n\n**Total:** ${departments.length} departments`
+                reply: `🏢 **Departments** (${new Date().toLocaleTimeString()})\n\n${deptText}\n\n**Total:** ${departments.length} departments`
             });
         }
 
@@ -169,7 +181,7 @@ router.post('/', async (req, res) => {
             };
 
             return res.json({
-                response: `📊 **System Statistics** (${new Date().toLocaleTimeString()})\n\n` +
+                reply: `📊 **System Statistics** (${new Date().toLocaleTimeString()})\n\n` +
                     `👥 **Users:** ${stats.totalUsers} (${stats.activeUsers} active, ${stats.inactiveUsers} inactive)\n` +
                     `📥 **Inward Mails:** ${stats.totalInwardMails}\n` +
                     `📤 **Outward Mails:** ${stats.totalOutwardMails}\n` +
@@ -184,7 +196,7 @@ router.post('/', async (req, res) => {
         =============================== */
         if (!model) {
             return res.json({
-                response: '🤖 AI service is not configured right now. Please try:\n\n' +
+                reply: '🤖 AI service is not configured right now. Please try:\n\n' +
                     '• "show users" - See all users\n' +
                     '• "show statistics" - See system stats\n' +
                     '• "help" - See all commands'
@@ -204,13 +216,13 @@ The system has:
 
 User question: "${message}"
 
-Please provide a helpful, brief answer about Tapaal system. If you're not sure about specific data, suggest they use "show statistics" or "help" commands.`;
+Please provide a helpful, brief answer about the Tapaal system. If you're not sure about specific data, suggest they use "show statistics" or "help" commands.`;
 
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
 
         console.log('🤖 AI response sent successfully');
-        return res.json({ response: responseText });
+        return res.json({ reply: responseText });
 
     } catch (error) {
         console.error('🔥 GEMINI ERROR:', error);
@@ -219,21 +231,21 @@ Please provide a helpful, brief answer about Tapaal system. If you're not sure a
         // Check for specific Gemini errors
         if (error.message?.includes('API_KEY')) {
             return res.json({
-                response: '🔑 Gemini API key issue. Please check configuration.\n\n' +
+                reply: '🔑 Gemini API key issue. Please check configuration.\n\n' +
                     '💡 You can still use: "show users", "show statistics", "help"'
             });
         }
 
         if (error.message?.includes('quota')) {
             return res.json({
-                response: '📊 AI quota exceeded. Please try again later.\n\n' +
+                reply: '📊 AI quota exceeded. Please try again later.\n\n' +
                     '💡 You can still use: "show users", "show statistics", "help"'
             });
         }
 
         // Generic fallback
         return res.json({
-            response: '🤖 AI service temporarily unavailable.\n\n' +
+            reply: '🤖 AI service temporarily unavailable.\n\n' +
                 '💡 Try these commands:\n' +
                 '• "show users" - See all users\n' +
                 '• "show statistics" - System overview\n' +
@@ -241,6 +253,6 @@ Please provide a helpful, brief answer about Tapaal system. If you're not sure a
                 '• "hello" - Start conversation'
         });
     }
-});
+}
 
 module.exports = router;

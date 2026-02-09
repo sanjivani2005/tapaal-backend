@@ -1,9 +1,9 @@
-// Test the updated chatbot route
 const http = require('http');
 
-function testChatbot() {
+// Test Gemini AI functionality
+function testGeminiAI() {
     const requestData = JSON.stringify({
-        message: "hello"
+        message: "What is Tapaal system?"
     });
 
     const options = {
@@ -25,16 +25,21 @@ function testChatbot() {
         res.on('end', () => {
             console.log(`Status: ${res.statusCode}`);
             console.log('Response:', data);
-
+            
             try {
                 const parsed = JSON.parse(data);
                 if (parsed.reply) {
-                    console.log('✅ SUCCESS: Backend is returning "reply" field correctly!');
-                    console.log('Reply content:', parsed.reply);
-                } else if (parsed.response) {
-                    console.log('❌ ISSUE: Backend is still returning "response" field instead of "reply"');
+                    console.log('✅ SUCCESS: Gemini AI working!');
+                    console.log('AI Response:', parsed.reply);
+                    
+                    // Check if it's a real AI response (not a fallback)
+                    if (parsed.reply.includes('Tapaal') && parsed.reply.length > 100) {
+                        console.log('✅ Real AI response detected!');
+                    } else {
+                        console.log('⚠️  Might be a fallback response');
+                    }
                 } else {
-                    console.log('❌ ISSUE: No recognizable response field found');
+                    console.log('❌ ISSUE: No reply field found');
                 }
             } catch (e) {
                 console.log('❌ ERROR: Invalid JSON response');
@@ -50,4 +55,5 @@ function testChatbot() {
     req.end();
 }
 
-testChatbot();
+console.log('🧪 Testing Gemini AI with question: "What is Tapaal system?"');
+testGeminiAI();

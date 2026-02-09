@@ -1,14 +1,14 @@
-// Test the updated chatbot route
-const http = require('http');
+const https = require('https');
 
-function testChatbot() {
+// Test the live Render endpoint
+function testLiveEndpoint() {
     const requestData = JSON.stringify({
         message: "hello"
     });
 
     const options = {
-        hostname: 'localhost',
-        port: 5000,
+        hostname: 'tapaal-backend.onrender.com',
+        port: 443,
         path: '/api/chatbot',
         method: 'POST',
         headers: {
@@ -17,27 +17,30 @@ function testChatbot() {
         }
     };
 
-    const req = http.request(options, (res) => {
+    const req = https.request(options, (res) => {
         let data = '';
         res.on('data', (chunk) => {
             data += chunk;
         });
         res.on('end', () => {
             console.log(`Status: ${res.statusCode}`);
+            console.log('Headers:', res.headers);
             console.log('Response:', data);
-
+            
             try {
                 const parsed = JSON.parse(data);
                 if (parsed.reply) {
-                    console.log('✅ SUCCESS: Backend is returning "reply" field correctly!');
-                    console.log('Reply content:', parsed.reply);
+                    console.log('✅ SUCCESS: Live endpoint working!');
+                    console.log('Reply:', parsed.reply);
                 } else if (parsed.response) {
-                    console.log('❌ ISSUE: Backend is still returning "response" field instead of "reply"');
+                    console.log('⚠️  Using old "response" field');
+                } else if (parsed.error || parsed.message) {
+                    console.log('❌ ERROR:', parsed.error || parsed.message);
                 } else {
-                    console.log('❌ ISSUE: No recognizable response field found');
+                    console.log('❌ Unknown response format');
                 }
             } catch (e) {
-                console.log('❌ ERROR: Invalid JSON response');
+                console.log('❌ Invalid JSON:', data);
             }
         });
     });
@@ -50,4 +53,5 @@ function testChatbot() {
     req.end();
 }
 
-testChatbot();
+console.log('🧪 Testing live Render endpoint...');
+testLiveEndpoint();

@@ -1,94 +1,234 @@
-const express = require("express");
+const express = require('express');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const router = express.Router();
-const { GoogleGenAI } = require("@google/genai");
 
-const Inward = require("../models/InwardMail");
-const Outward = require("../models/OutwardMail");
-const Department = require("../models/Department");
+// MongoDB Models
+const InwardMail = require('../server/models/InwardMail');
+const OutwardMail = require('../server/models/OutwardMail');
+const User = require('../server/models/User');
+const Department = require('../server/models/Department');
+const ChatbotConversation = require('../server/models/ChatbotConversation'); // For future conversation history
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
-});
+// Gemini Init (STABLE MODEL) - DISABLED FOR NOW
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+let model = null;
 
-router.post("/", async (req, res) => {
-  try {
-    const userMessage = req.body.message;
-
-    if (!userMessage) {
-      return res.json({ reply: "Please ask a question." });
+// Initialize Gemini safely
+try {
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'YOUR_NEW_API_KEY_HERE') {
+        model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+        console.log('✅ Gemini AI initialized successfully');
+    } else {
+        console.log('⚠️ Gemini AI disabled - API key not set');
     }
+} catch (error) {
+    console.error('❌ Gemini AI initialization failed:', error.message);
+}
 
-    /* ---------- FETCH REAL DATABASE DATA ---------- */
+// Debug: Check API Key
+console.log('🔑 Gemini API Key:', process.env.GEMINI_API_KEY ? 'Set' : 'NOT SET');
 
-    const totalInward = await Inward.countDocuments();
-    const pendingInward = await Inward.countDocuments({ status: "pending" });
-    const deliveredInward = await Inward.countDocuments({ status: "delivered" });
+router.post('/', async (req, res) => {
+    // Set UTF-8 encoding for responses
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
-    const totalOutward = await Outward.countDocuments();
-    const pendingOutward = await Outward.countDocuments({ status: "pending" });
-    const deliveredOutward = await Outward.countDocuments({ status: "delivered" });
+    try {
+        console.log('🤖 Chatbot request received:', req.body);
+        const { message } = req.body;
 
-    const departments = await Department.find().lean();
-
-    const deptInfo = departments.map(d =>
-      `${d.name} (HOD: ${d.headOfDepartment || "Not assigned"})` 
-    ).join("\n");
-
-    /* ---------- RAG PROMPT ---------- */
-
-    const prompt = `
-You are an intelligent assistant for Tapaal Office Mail Management System.
-
-REAL DATABASE DATA:
-
-Total Inward Mails: ${totalInward}
-Pending Inward: ${pendingInward}
-Delivered Inward: ${deliveredInward}
-
-Total Outward Mails: ${totalOutward}
-Pending Outward: ${pendingOutward}
-Delivered Outward: ${deliveredOutward}
-
-Departments:
-${deptInfo}
-
-Rules:
-- Answer using the database data above.
-- If user asks statistics → give numbers.
-- If user asks about departments → use department list.
-- If greeting → greet politely.
-- Keep answers short and clear (2-4 lines max).
-- Hindi question → Hindi answer.
-- English question → English answer.
-
-User Question:
-${userMessage}
-`;
-
-    /* ---------- GEMINI CALL ---------- */
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }]
+        if (!message) {
+            return res.status(400).json({ reply: 'Message is required' });
         }
-      ]
-    });
 
-    const reply =
-      response?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "AI could not generate response.";
+        const lower = message.toLowerCase();
 
-    res.json({ reply });
+        /* ===============================
+           1️⃣ GREETING (NO AI) - FAST & RELIABLE
+        =============================== */
+        if (['hello', 'hi', 'hey', 'namaste', 'good morning', 'good afternoon', 'good evening'].some(w => lower.includes(w))) {
+            return res.json({
+                reply: '👋 Hello! I am your Tapaal Mail Management Assistant. How can I help you today?\n\n💡 Try: "show users", "show statistics", "show inward mails", "help"'
+            });
+        }
 
-  } catch (error) {
-    console.error("AI ERROR:", error);
-    res.json({
-      reply: "AI service temporarily unavailable. Please try again."
-    });
-  }
+        /* ===============================
+           2️⃣ HELP (NO AI) - INSTANT RESPONSE
+        =============================== */
+        if (['help', 'what can you do', 'commands', 'features'].some(w => lower.includes(w))) {
+            return res.json({
+                reply: '🤖 **Tapaal Assistant Commands:**\n\n' +
+                    '👥 **Users:** "show users", "user list", "how many users"\n' +
+                    '📥 **Inward Mails:** "show inward mails", "inward mail list"\n' +
+                    '📤 **Outward Mails:** "show outward mails", "outward mail list"\n' +
+                    '📊 **Statistics:** "show statistics", "system status", "how many"\n' +
+                    '🏢 **Departments:** "show departments", "department list"\n' +
+                    '❓ **Questions:** Ask anything about the system!\n\n' +
+                    '💡 Just type naturally, I\'ll understand! 🚀'
+            });
+        }
+
+        /* ===============================
+           3️⃣ USERS (NO AI) ✅ ALREADY WORKS
+        =============================== */
+        if (lower.includes('user')) {
+            console.log('🎯 User intent detected - using direct DB query');
+            const users = await User.find().lean();
+
+            if (!users.length) {
+                return res.json({ reply: '👥 No users found in the system.' });
+            }
+
+            const userText = users.map(u =>
+                `• ${u.fullName || u.name || 'Unknown'} (${u.email || 'N/A'}) - Role: ${u.role || 'User'}, Dept: ${u.department || 'N/A'}, Status: ${u.isActive ? '✅ Active' : '❌ Inactive'}`
+            ).join('\n');
+
+            return res.json({
+                reply: `👥 **Users List** (${new Date().toLocaleTimeString()})\n\n${userText}\n\n**Total:** ${users.length} users`
+            });
+        }
+
+        /* ===============================
+           4️⃣ INWARD MAILS (NO AI)
+        =============================== */
+        if (lower.includes('inward')) {
+            console.log('📥 Inward mail intent detected - using direct DB query');
+            const mails = await InwardMail.find().populate('department').lean();
+
+            if (!mails.length) {
+                return res.json({ reply: '📥 No inward mails found in the system.' });
+            }
+
+            const mailText = mails.map(m =>
+                `• ${m.mailId || m._id}\n  📧 Subject: ${m.subject || m.details || 'No Subject'}\n  👤 Sender: ${m.sender || 'Unknown'}\n  🏢 Dept: ${m.department?.name || 'N/A'}\n  📊 Status: ${m.status || 'Unknown'}\n  ⚡ Priority: ${m.priority || 'Normal'}`
+            ).join('\n\n');
+
+            return res.json({
+                reply: `📥 **Inward Mails** (${new Date().toLocaleTimeString()})\n\n${mailText}\n\n**Total:** ${mails.length} inward mails`
+            });
+        }
+
+        /* ===============================
+           5️⃣ OUTWARD MAILS (NO AI)
+        =============================== */
+        if (lower.includes('outward')) {
+            console.log('📤 Outward mail intent detected - using direct DB query');
+            const mails = await OutwardMail.find().populate('department').lean();
+
+            if (!mails.length) {
+                return res.json({ reply: '📤 No outward mails found in the system.' });
+            }
+
+            const mailText = mails.map(m =>
+                `• ${m.mailId || m._id}\n  📧 Subject: ${m.subject || 'No Subject'}\n  👤 Receiver: ${m.receiver || 'Unknown'}\n  🏢 Dept: ${m.department?.name || 'N/A'}\n  📊 Status: ${m.status || 'Unknown'}\n  ⚡ Priority: ${m.priority || 'Normal'}`
+            ).join('\n\n');
+
+            return res.json({
+                reply: `📤 **Outward Mails** (${new Date().toLocaleTimeString()})\n\n${mailText}\n\n**Total:** ${mails.length} outward mails`
+            });
+        }
+
+        /* ===============================
+           6️⃣ DEPARTMENTS (NO AI)
+        =============================== */
+        if (lower.includes('department')) {
+            console.log('🏢 Department intent detected - using direct DB query');
+            const departments = await Department.find().lean();
+
+            if (!departments.length) {
+                return res.json({ reply: '🏢 No departments found in the system.' });
+            }
+
+            const deptText = departments.map(d =>
+                `• ${d.name || 'Unknown'} (${d.code || 'N/A'})\n  👤 Head: ${d.head || 'N/A'}\n  📊 Status: ${d.status || 'Unknown'}`
+            ).join('\n\n');
+
+            return res.json({
+                reply: `🏢 **Departments** (${new Date().toLocaleTimeString()})\n\n${deptText}\n\n**Total:** ${departments.length} departments`
+            });
+        }
+
+        /* ===============================
+           7️⃣ STATISTICS (NO AI)
+        =============================== */
+        if (['statistics', 'stats', 'system status', 'how many', 'count', 'total'].some(w => lower.includes(w))) {
+            console.log('📊 Statistics intent detected - using direct DB query');
+
+            const [
+                inwardMails,
+                outwardMails,
+                users,
+                departments
+            ] = await Promise.all([
+                InwardMail.find().lean(),
+                OutwardMail.find().lean(),
+                User.find().lean(),
+                Department.find().lean()
+            ]);
+
+            const stats = {
+                totalInwardMails: inwardMails.length,
+                totalOutwardMails: outwardMails.length,
+                totalUsers: users.length,
+                totalDepartments: departments.length,
+                activeUsers: users.filter(u => u.isActive).length,
+                inactiveUsers: users.filter(u => !u.isActive).length,
+                totalMails: inwardMails.length + outwardMails.length
+            };
+
+            return res.json({
+                reply: `📊 **System Statistics** (${new Date().toLocaleTimeString()})\n\n` +
+                    `👥 **Users:** ${stats.totalUsers} (${stats.activeUsers} active, ${stats.inactiveUsers} inactive)\n` +
+                    `📥 **Inward Mails:** ${stats.totalInwardMails}\n` +
+                    `📤 **Outward Mails:** ${stats.totalOutwardMails}\n` +
+                    `📧 **Total Mails:** ${stats.totalMails}\n` +
+                    `🏢 **Departments:** ${stats.totalDepartments}\n\n` +
+                    `💡 System is running perfectly! 🚀`
+            });
+        }
+
+        /* ===============================
+           8️⃣ AI (ONLY FOR OPEN QUESTIONS)
+        =============================== */
+        if (!model) {
+            return res.json({
+                reply: '🤖 AI service is not configured right now. Please try:\n\n' +
+                    '• "show users" - See all users\n' +
+                    '• "show statistics" - See system stats\n' +
+                    '• "help" - See all commands'
+            });
+        }
+
+        console.log('🧠 Using AI for complex query...');
+
+        // Simple AI prompt for open questions
+        const prompt = `You are a helpful assistant for a Government Tapaal (Mail Management) System.
+
+The system has:
+- Users with roles and departments
+- Inward and outward mails with tracking
+- Multiple departments
+- Mail priority and status tracking
+
+User question: "${message}"
+
+Please provide a helpful, brief answer about Tapaal system. If you're not sure about specific data, suggest they use "show statistics" or "help" commands.`;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+
+        console.log('🤖 AI response sent successfully');
+        return res.json({ reply: responseText });
+
+    } catch (error) {
+        console.error('🔥 CHATBOT ERROR:', error);
+        console.error('🔥 ERROR TYPE:', error.constructor.name);
+        console.error('🔥 ERROR MESSAGE:', error.message);
+
+        // Always return a response
+        return res.json({
+            reply: '🤖 Chatbot encountered an error. Please try again.\n\n💡 Available commands: "help", "show users", "show statistics"'
+        });
+    }
 });
 
 module.exports = router;

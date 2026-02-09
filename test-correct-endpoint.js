@@ -1,7 +1,7 @@
-// Test the updated chatbot route
 const http = require('http');
 
-function testChatbot() {
+// Test the correct chatbot endpoint
+function testChatbotEndpoint() {
     const requestData = JSON.stringify({
         message: "hello"
     });
@@ -25,16 +25,16 @@ function testChatbot() {
         res.on('end', () => {
             console.log(`Status: ${res.statusCode}`);
             console.log('Response:', data);
-
+            
             try {
                 const parsed = JSON.parse(data);
                 if (parsed.reply) {
-                    console.log('✅ SUCCESS: Backend is returning "reply" field correctly!');
+                    console.log('✅ SUCCESS: Chatbot endpoint working correctly!');
                     console.log('Reply content:', parsed.reply);
                 } else if (parsed.response) {
-                    console.log('❌ ISSUE: Backend is still returning "response" field instead of "reply"');
+                    console.log('❌ ISSUE: Backend still returning "response" field');
                 } else {
-                    console.log('❌ ISSUE: No recognizable response field found');
+                    console.log('❌ ISSUE: No recognizable response field');
                 }
             } catch (e) {
                 console.log('❌ ERROR: Invalid JSON response');
@@ -50,4 +50,5 @@ function testChatbot() {
     req.end();
 }
 
-testChatbot();
+console.log('🧪 Testing correct chatbot endpoint: /api/chatbot');
+testChatbotEndpoint();

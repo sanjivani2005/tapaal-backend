@@ -32,9 +32,34 @@ mongoose.connect(process.env.MONGODB_URI)
   });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://tapaal-frontend.vercel.app"
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+  optionsSuccessStatus: 200
+}));
+
+app.use(express.json({
+  type: ['application/json', 'text/plain'],
+  limit: '10mb'
+}));
+app.use(express.urlencoded({
+  extended: true,
+  parameterLimit: 1000,
+  limit: '10mb'
+}));
+
+// Set UTF-8 encoding for responses
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
+
 app.use('/api/chatbot', chatbotRoutes);
 
 // Serve uploaded files
@@ -55,6 +80,8 @@ app.use('/api/outward-mails', outwardMailsRoutes);
 app.use('/api/departments', departmentsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Health route
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -84,5 +111,3 @@ app.use('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
-module.exports = app;
